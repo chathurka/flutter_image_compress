@@ -28,6 +28,13 @@
     
     NSURL *imageUrl = [NSURL fileURLWithPath:path];
     NSData *nsdata = [NSData dataWithContentsOfURL:imageUrl];
+
+    if (nsdata == nil || nsdata.length == 0) {
+        result([FlutterError errorWithCode:@"file_read_failed"
+                                   message:@"Failed to read image data from path."
+                                   details:path]);
+        return;
+    }
     
     NSString *imageType = [self mimeTypeByGuessingFromData:nsdata];
     
@@ -37,18 +44,39 @@
     [[SDImageCodersManager sharedManager] addCoder:webPCoder];
     
     if([imageType  isEqual: @"image/webp"]) {
-    img = [[SDImageWebPCoder sharedCoder] decodedImageWithData:nsdata options:nil];
+        img = [[SDImageWebPCoder sharedCoder] decodedImageWithData:nsdata options:nil];
     } else {
         img = [UIImage imageWithData:nsdata];
+    }
+
+    if (img == nil) {
+        result([FlutterError errorWithCode:@"decode_failed"
+                                   message:@"Failed to decode image."
+                                   details:path]);
+        return;
     }
 
 
     NSData *data = [CompressHandler compressWithUIImage:img minWidth:minWidth minHeight:minHeight quality:quality rotate:rotate format:formatType];
 
+    if (data == nil || data.length == 0) {
+        result([FlutterError errorWithCode:@"compress_failed"
+                                   message:@"Image compression returned empty data."
+                                   details:nil]);
+        return;
+    }
+
     if (keepExif) {
         SYMetadata *metadata = [SYMetadata metadataWithFileURL:[NSURL fileURLWithPath:path]];
         metadata.orientation = @0;
         data = [SYMetadata dataWithImageData:data andMetadata:metadata];
+
+        if (data == nil || data.length == 0) {
+            result([FlutterError errorWithCode:@"metadata_failed"
+                                       message:@"Failed to apply EXIF metadata."
+                                       details:nil]);
+            return;
+        }
     }
 
     result([FlutterStandardTypedData typedDataWithBytes:data]);
@@ -71,6 +99,13 @@
     
     NSURL *imageUrl = [NSURL fileURLWithPath:path];
     NSData *nsdata = [NSData dataWithContentsOfURL:imageUrl];
+
+    if (nsdata == nil || nsdata.length == 0) {
+        result([FlutterError errorWithCode:@"file_read_failed"
+                                   message:@"Failed to read image data from path."
+                                   details:path]);
+        return;
+    }
     
     NSString *imageType = [self mimeTypeByGuessingFromData:nsdata];
     
@@ -80,17 +115,38 @@
     [[SDImageCodersManager sharedManager] addCoder:webPCoder];
     
     if([imageType  isEqual: @"image/webp"]) {
-    img = [[SDImageWebPCoder sharedCoder] decodedImageWithData:nsdata options:nil];
+        img = [[SDImageWebPCoder sharedCoder] decodedImageWithData:nsdata options:nil];
     } else {
         img = [UIImage imageWithData:nsdata];
     }
+
+    if (img == nil) {
+        result([FlutterError errorWithCode:@"decode_failed"
+                                   message:@"Failed to decode image."
+                                   details:path]);
+        return;
+    }
     
     NSData *data = [CompressHandler compressDataWithUIImage:img minWidth:minWidth minHeight:minHeight quality:quality rotate:rotate format:formatType];
+
+    if (data == nil || data.length == 0) {
+        result([FlutterError errorWithCode:@"compress_failed"
+                                   message:@"Image compression returned empty data."
+                                   details:nil]);
+        return;
+    }
 
     if (keepExif) {
         SYMetadata *metadata = [SYMetadata metadataWithFileURL:[NSURL fileURLWithPath:path]];
         metadata.orientation = @0;
         data = [SYMetadata dataWithImageData:data andMetadata:metadata];
+
+        if (data == nil || data.length == 0) {
+            result([FlutterError errorWithCode:@"metadata_failed"
+                                       message:@"Failed to apply EXIF metadata."
+                                       details:nil]);
+            return;
+        }
     }
 
     [data writeToURL:[[NSURL alloc] initFileURLWithPath:targetPath] atomically:YES];
